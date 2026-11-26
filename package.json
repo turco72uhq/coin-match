@@ -1,0 +1,12 @@
+{
+  "name": "coin-match-zasko",
+  "version": "1.0.0",
+  "description": "Top 3 des cadeaux TikTok Live en temps reel",
+  "type": "module",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "dependencies": {
+    "tiktok-live-connector": "^2.5.0",
+    "ws": "^8.18.0"
+  }
+}

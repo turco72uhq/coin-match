@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coin Match — zasko.ae</title>
+<style>
+  :root{--bg:#2b0838;--panel:#1d0727;--line:#4a1f5c;--txt:#fff;--mut:#bba3c9;--gold:#ffcc33;--silver:#cfd6e0;--bronze:#e08a4b;--pink:#ff2e7a;--ok:#3ddc84;--err:#ff5a5a}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
+  body.overlay{background:transparent}
+  body.overlay .ctrl{display:none!important}
+  body.overlay .wrap{padding:0;justify-content:center}
+
+  .ctrl{background:var(--panel);border-bottom:1px solid var(--line);padding:14px 18px;display:flex;flex-direction:column;gap:10px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  h1{margin:0;font-size:20px}
+  h1 sup{color:var(--pink);font-size:11px}
+  .status{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--mut)}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--err)}
+  .dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+  input{background:#120318;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px}
+  input[type=number]{width:70px}
+  button{background:#2a2a2a;color:#fff;border:1px solid #444;border-radius:8px;padding:8px 13px;font-size:14px;cursor:pointer}
+  button:hover{border-color:var(--pink)}
+  button.main{background:var(--pink);border-color:var(--pink);font-weight:700}
+  label{font-size:13px;color:var(--mut);display:flex;align-items:center;gap:6px}
+
+  .wrap{display:flex;gap:24px;padding:24px;align-items:flex-start;flex-wrap:wrap}
+  .board{width:340px}
+  .title{background:#000;border-radius:10px;text-align:center;font-weight:700;font-size:14px;padding:9px;margin-bottom:5px}
+  .card{background:#000;border-radius:12px;padding:16px 10px 14px;min-height:300px}
+  .timer{text-align:center;font-size:42px;font-weight:800;font-variant-numeric:tabular-nums;margin:2px 0 4px}
+  .phase{text-align:center;font-size:12px;color:var(--mut);margin-bottom:12px;min-height:16px}
+  .snipe .timer{color:var(--pink);animation:pulse 1s infinite}
+  .snipe .phase{color:var(--pink);font-weight:700}
+  @keyframes pulse{50%{transform:scale(1.07)}}
+  .rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+  .rank li{display:flex;align-items:center;gap:9px;border-radius:9px;padding:7px 9px;transition:transform .25s}
+  .rank li.r1{background:#5a4000}
+  .rank li.r2{background:#3d3d3d}
+  .rank li.r3{background:#4a2a10}
+  .rank li.bump{animation:bump .4s}
+  @keyframes bump{40%{transform:scale(1.05)}}
+  .medal{font-size:20px;width:24px;text-align:center}
+  .av{width:34px;height:34px;border-radius:50%;object-fit:cover;background:#333;border:2px solid var(--gold);flex:none}
+  .r2 .av{border-color:var(--silver)} .r3 .av{border-color:var(--bronze)}
+  .nm{flex:1;font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pts{display:flex;align-items:center;gap:5px;background:rgba(0,0,0,.35);border-radius:20px;padding:3px 9px;font-weight:800;color:var(--gold);font-size:14px}
+  .coin{width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff3a8,var(--gold) 45%,#c98a00);flex:none}
+  .empty{color:var(--mut);text-align:center;font-size:13px;padding:30px 0}
+  .foot{display:flex;gap:6px;margin-top:6px}
+  .pill{background:#000;border-radius:20px;padding:5px 11px;font-size:12px;color:var(--mut)}
+  .pill b{color:#fff}
+
+  .winner{display:none;text-align:center;padding:10px 0}
+  .ended .winner{display:block}
+  .ended .rank,.ended .timer,.ended .phase{display:none}
+  .winner .crown{font-size:44px}
+  .winner img{width:80px;height:80px;border-radius:50%;border:3px solid var(--gold);object-fit:cover;background:#333}
+  .winner .wn{font-size:22px;font-weight:800;margin-top:6px}
+  .winner .wp{color:var(--gold);font-weight:800;font-size:18px;margin-top:4px}
+  .winner .others{color:var(--mut);font-size:13px;margin-top:10px;line-height:1.6}
+
+  .side{flex:1;min-width:280px;max-width:520px}
+  .side h2{font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px}
+  #feed{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow:auto}
+  #feed li{display:flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:14px}
+  #feed .g{width:26px;height:26px;object-fit:contain}
+  #feed .who{flex:1}
+  #feed .who small{display:block;color:var(--mut);font-size:12px}
+  #feed .off{opacity:.45}
+  .help{font-size:12px;color:var(--mut);line-height:1.5;margin:0}
+</style>
+</head>
+<body>
+
+<div class="ctrl">
+  <div class="row">
+    <h1>Coin Match <sup>zasko.ae</sup></h1>
+    <div class="status"><span id="dot" class="dot"></span><span id="stat">Bot non lancé</span></div>
+  </div>
+  <div class="row">
+    <input id="pseudo" placeholder="Ton pseudo TikTok" value="zasko.ae">
+    <button id="btnCo" class="main">Connecter mon live</button>
+  </div>
+  <div class="row">
+    <button id="btnStart">▷ Lancer le match</button>
+    <button id="btnStop">□ Terminer le match</button>
+    <button id="btnReset">↺ Réinitialiser</button>
+    <button id="btnTest">🧪 Faux cadeau</button>
+    <button id="btnOverlay">Mode overlay</button>
+    <label>Durée <input id="dur" type="number" min="10" value="120"> s</label>
+    <label>Snipe <input id="snipe" type="number" min="0" value="30"> s</label>
+  </div>
+  <p class="help">Snipe : si quelqu'un passe 1er pendant les 30 dernières secondes, le chrono remonte à 30 s. Tous les cadeaux comptent, même avant ou après le match. « Réinitialiser » remet tout à zéro.</p>
+</div>
+
+<div class="wrap">
+  <div class="board" id="board">
+    <div class="title">Coin Match</div>
+    <div class="card">
+      <div class="timer" id="timer">02:00</div>
+      <div class="phase" id="phase">Prêt à lancer</div>
+      <ul class="rank" id="rank"><li class="empty">Envoie des cadeaux pour entrer dans le top 3 !</li></ul>
+      <div class="winner" id="winner"></div>
+    </div>
+    <div class="foot">
+      <span class="pill"><b id="nbPart">0</b> participants</span>
+      <span class="pill">👀 <b id="viewers">0</b> viewers</span>
+    </div>
+  </div>
+
+  <div class="side ctrl" style="background:none;border:none;padding:0">
+    <h2>Derniers cadeaux</h2>
+    <ul id="feed"><li class="empty" style="background:none;border:none">Rien pour l'instant</li></ul>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = n => n.toLocaleString('fr-FR');
+const NOAV = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+const mmss = s => String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+
+// ---------- état du match ----------
+let state = 'idle';           // idle | running | ended
+let endAt = 0, tick = null;
+const players = {};           // uid -> {name, avatar, pts}
+const streaks = {};           // combo en cours -> nombre déjà compté
+let lastLeader = null;
+
+function sorted(){ return Object.entries(players).sort((a,b)=>b[1].pts-a[1].pts); }
+
+function render(){
+  const list = sorted();
+  $('nbPart').textContent = list.length;
+  const rank = $('rank');
+  if(!list.length){ rank.innerHTML='<li class="empty">Envoie des cadeaux pour entrer dans le top 3 !</li>'; return; }
+  const medals=['🥇','🥈','🥉'];
+  rank.innerHTML='';
+  list.slice(0,3).forEach(([uid,p],i)=>{
+    const li=document.createElement('li');
+    li.className='r'+(i+1)+(p.bump?' bump':'');
+    p.bump=false;
+    li.innerHTML=`<span class="medal">${medals[i]}</span><img class="av" alt=""><span class="nm"></span><span class="pts"><span class="coin"></span><span></span></span>`;
+    li.querySelector('img').src=p.avatar||NOAV;
+    li.querySelector('.nm').textContent=p.name;
+    li.querySelector('.pts span:last-child').textContent=fmt(p.pts);
+    rank.appendChild(li);
+  });
+}
+
+function secondsLeft(){ return Math.max(0, Math.ceil((endAt-Date.now())/1000)); }
+const snipeSec = () => Math.max(0, Number($('snipe').value)||0);
+
+function updateTimer(){
+  const s = state==='running' ? secondsLeft() : (state==='idle' ? Number($('dur').value)||120 : 0);
+  $('timer').textContent = mmss(s);
+  const inSnipe = state==='running' && snipeSec()>0 && s<=snipeSec();
+  $('board').classList.toggle('snipe', inSnipe);
+  $('phase').textContent = state==='idle' ? 'Prêt à lancer' : inSnipe ? '⚡ SNIPE ! Passe 1er pour relancer 30 s' : 'Match en cours';
+  if(state==='running' && s<=0) endMatch();
+}
+
+function startMatch(){
+  if(state==='running') return;
+  if(state==='ended') resetMatch();
+  state='running';
+  endAt = Date.now() + (Number($('dur').value)||120)*1000;
+  lastLeader = sorted()[0]?.[0] || null;
+  clearInterval(tick); tick=setInterval(updateTimer,200); updateTimer();
+}
+
+function endMatch(){
+  if(state!=='running') return;
+  state='ended'; clearInterval(tick);
+  $('board').classList.remove('snipe');
+  $('board').classList.add('ended');
+  const list = sorted();
+  const w = $('winner');
+  if(!list.length){ w.innerHTML='<div class="crown">⏱️</div><div class="wn">Personne n\'a joué</div>'; return; }
+  const [,p] = list[0];
+  w.innerHTML=`<div class="crown">👑</div><img alt=""><div class="wn"></div><div class="wp"></div><div class="others"></div>`;
+  w.querySelector('img').src=p.avatar||NOAV;
+  w.querySelector('.wn').textContent=p.name+' gagne !';
+  w.querySelector('.wp').textContent=fmt(p.pts)+' pièces';
+  w.querySelector('.others').textContent = list.slice(1,3).map(([,q],i)=>(i?'🥉 ':'🥈 ')+q.name+' — '+fmt(q.pts)).join('  ·  ');
+}
+
+function resetMatch(){
+  state='idle'; clearInterval(tick);
+  for(const k in players) delete players[k];
+  for(const k in streaks) delete streaks[k];
+  lastLeader=null;
+  $('board').classList.remove('ended','snipe');
+  render(); updateTimer();
+}
+
+// ---------- cadeaux ----------
+function addFeed(g, count, counted){
+  const feed=$('feed'); const e=feed.querySelector('.empty'); if(e) e.remove();
+  const li=document.createElement('li'); if(!counted) li.classList.add('off');
+  li.innerHTML=`<img class="g" alt=""><span class="who"><b></b><small></small></span><span class="pts"><span class="coin"></span><span></span></span>`;
+  li.querySelector('.g').src=g.giftImg||''; if(!g.giftImg) li.querySelector('.g').style.display='none';
+  li.querySelector('b').textContent=g.name;
+  li.querySelector('small').textContent=g.giftName+(count>1?' ×'+count:'')+'';
+  li.querySelector('.pts span:last-child').textContent=fmt(g.diamond*count);
+  feed.prepend(li); while(feed.children.length>40) feed.lastChild.remove();
+  return li;
+}
+
+function givePoints(g, pts){
+  if(pts<=0) return;
+  if(state==='ended'){ state='idle'; $('board').classList.remove('ended'); }
+  const p = players[g.uid] || (players[g.uid]={name:g.name, avatar:g.avatar, pts:0});
+  p.name=g.name; if(g.avatar) p.avatar=g.avatar;
+  p.pts+=pts; p.bump=true;
+  // Snipe : nouveau 1er pendant les dernières secondes -> on remonte le chrono
+  const leader = sorted()[0][0];
+  if(leader!==lastLeader){
+    const s=secondsLeft();
+    if(state==='running' && snipeSec()>0 && s<=snipeSec() && lastLeader!==null) endAt = Date.now()+snipeSec()*1000;
+    lastLeader=leader;
+  }
+  render(); updateTimer();
+}
+
+function onGift(g){
+  if(!g.diamond) return;
+  if(g.streakable){
+    const key=g.uid+'|'+g.giftId+'|'+g.groupId;
+    const s = streaks[key] || (streaks[key]={done:0, li:null, counted: true});
+    const delta = g.count - s.done;
+    if(delta>0){ s.done=g.count; if(s.counted) givePoints(g, delta*g.diamond); }
+    if(s.li) s.li.remove();
+    s.li = addFeed(g, s.done, s.counted);
+    if(g.end) delete streaks[key];
+  } else {
+    const counted = true;
+    addFeed(g, g.count, counted);
+    if(counted) givePoints(g, g.diamond*g.count);
+  }
+}
+
+// ---------- connexion au bot ----------
+let ws=null;
+function setStatus(on, text){ $('dot').classList.toggle('on',on); $('stat').textContent=text; }
+// Mode sans installation : page ouverte en double-clic -> on passe par l'appli TikFinity
+const viaTikFinity = location.protocol==='file:';
+function openTikFinity(){
+  $('pseudo').style.display='none'; $('btnCo').style.display='none';
+  setStatus(false,'Connexion à TikFinity…');
+  ws = new WebSocket('ws://localhost:21213/');
+  ws.onopen = ()=> setStatus(true,'Connecté via TikFinity');
+  ws.onmessage = e=>{
+    let m; try{ m=JSON.parse(e.data) }catch(_){ return }
+    const d = m.data||{}; const u = d.user||d;
+    if(m.event==='gift') onGift({
+      uid: u.uniqueId||u.userId||'inconnu', name: u.nickname||u.uniqueId||'Anonyme',
+      avatar: u.profilePictureUrl||'', giftId: d.giftId, giftName: d.giftName||'Cadeau',
+      giftImg: d.giftPictureUrl||'', diamond: Number(d.diamondCount||0),
+      count: Math.max(1,Number(d.repeatCount||1)), streakable: d.giftType===1,
+      end: !!d.repeatEnd, groupId: String(d.groupId||'')
+    });
+    if(m.event==='roomUser') $('viewers').textContent=fmt(Number(d.viewerCount||0));
+  };
+  ws.onclose = ()=>{ setStatus(false,'Ouvre l\'appli TikFinity sur ce PC (nouvel essai…)'); setTimeout(openTikFinity,3000); };
+}
+function openBot(){
+  ws = new WebSocket('ws://'+(location.host||'localhost:3000'));
+  ws.onopen = ()=> setStatus(false,'Bot prêt — mets ton pseudo et connecte');
+  ws.onmessage = e=>{
+    let m; try{ m=JSON.parse(e.data) }catch(_){ return }
+    if(m.type==='status'){ setStatus(m.connected, m.text); $('btnCo').textContent = m.connected?'Déconnecter':'Connecter mon live'; $('btnCo').dataset.on = m.connected?'1':''; }
+    if(m.type==='gift') onGift(m);
+    if(m.type==='cmd') onCmd(m);
+    if(m.type==='viewers') $('viewers').textContent=fmt(m.count);
+  };
+  ws.onclose = ()=>{ setStatus(false,'Bot fermé — relance LANCER.bat'); setTimeout(openBot,3000); };
+}
+$('btnCo').onclick = ()=>{
+  if(!ws || ws.readyState!==1) return setStatus(false,'Le bot n\'est pas lancé (LANCER.bat)');
+  if($('btnCo').dataset.on) ws.send(JSON.stringify({type:'disconnect'}));
+  else ws.send(JSON.stringify({type:'connect', username:$('pseudo').value}));
+};
+
+// Avec le bot : les boutons pilotent toutes les pages ouvertes (dont l'overlay du live)
+const botOn = ()=> !viaTikFinity && ws && ws.readyState===1;
+const cmd = c => ws.send(JSON.stringify({type:'cmd', cmd:c, dur:$('dur').value, snipe:$('snipe').value}));
+$('btnStart').onclick=()=> botOn() ? cmd('start') : startMatch();
+$('btnStop').onclick=()=> botOn() ? cmd('stop') : endMatch();
+$('btnReset').onclick=()=> botOn() ? cmd('reset') : resetMatch();
+function onCmd(m){
+  if(m.dur) $('dur').value=m.dur;
+  $('snipe').value=m.snipe;
+  if(m.cmd==='start'){ if(state==='running') return; startMatch(); }
+  if(m.cmd==='stop') endMatch();
+  if(m.cmd==='reset') resetMatch();
+}
+$('btnOverlay').onclick=()=>document.body.classList.toggle('overlay');
+$('dur').oninput=updateTimer;
+
+// faux cadeaux pour tester
+const TEST=[{giftName:'Rose',diamond:1,streakable:true},{giftName:'Donut',diamond:30,streakable:true},{giftName:'Galaxy',diamond:1000},{giftName:'Lion',diamond:29999},{giftName:'Perfume',diamond:20,streakable:true}];
+const FANS=['Test User','Test User 2','Test User 3','RobloxPro','TuTi'];
+$('btnTest').onclick=()=>{
+  if(botOn()) return ws.send(JSON.stringify({type:'cmd', cmd:'test'}));
+  const t=TEST[Math.random()*TEST.length|0], n=FANS[Math.random()*FANS.length|0];
+  const base={...t, uid:n, name:n, avatar:'', giftId:t.giftName, groupId:String(Date.now()), giftImg:''};
+  if(t.streakable){ const max=1+(Math.random()*8|0); let i=1; const iv=setInterval(()=>{ onGift({...base,count:i,end:i===max}); if(++i>max) clearInterval(iv); },200); }
+  else onGift({...base,count:1,end:true});
+};
+
+const q=new URLSearchParams(location.search);
+if(q.get('overlay')) document.body.classList.add('overlay');
+if(q.get('pseudo')) $('pseudo').value=q.get('pseudo');
+render(); updateTimer(); viaTikFinity ? openTikFinity() : openBot();
+</script>
+</body>
+</html>

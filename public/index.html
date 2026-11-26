@@ -268,7 +268,7 @@ function openTikFinity(){
   ws.onclose = ()=>{ setStatus(false,'Ouvre l\'appli TikFinity sur ce PC (nouvel essai…)'); setTimeout(openTikFinity,3000); };
 }
 function openBot(){
-  ws = new WebSocket('ws://'+(location.host||'localhost:3000'));
+  ws = new WebSocket((location.protocol==='https:'?'wss://':'ws://')+(location.host||'localhost:3000'));
   ws.onopen = ()=> setStatus(false,'Bot prêt — mets ton pseudo et connecte');
   ws.onmessage = e=>{
     let m; try{ m=JSON.parse(e.data) }catch(_){ return }
@@ -281,13 +281,14 @@ function openBot(){
 }
 $('btnCo').onclick = ()=>{
   if(!ws || ws.readyState!==1) return setStatus(false,'Le bot n\'est pas lancé (LANCER.bat)');
-  if($('btnCo').dataset.on) ws.send(JSON.stringify({type:'disconnect'}));
-  else ws.send(JSON.stringify({type:'connect', username:$('pseudo').value}));
+  if($('btnCo').dataset.on) ws.send(JSON.stringify({type:'disconnect', key:KEY}));
+  else ws.send(JSON.stringify({type:'connect', key:KEY, username:$('pseudo').value}));
 };
 
 // Avec le bot : les boutons pilotent toutes les pages ouvertes (dont l'overlay du live)
 const botOn = ()=> !viaTikFinity && ws && ws.readyState===1;
-const cmd = c => ws.send(JSON.stringify({type:'cmd', cmd:c, dur:$('dur').value, snipe:$('snipe').value}));
+const KEY = new URLSearchParams(location.search).get('cle')||'';
+const cmd = c => ws.send(JSON.stringify({type:'cmd', key:KEY, cmd:c, dur:$('dur').value, snipe:$('snipe').value}));
 $('btnStart').onclick=()=> botOn() ? cmd('start') : startMatch();
 $('btnStop').onclick=()=> botOn() ? cmd('stop') : endMatch();
 $('btnReset').onclick=()=> botOn() ? cmd('reset') : resetMatch();
@@ -305,7 +306,7 @@ $('dur').oninput=updateTimer;
 const TEST=[{giftName:'Rose',diamond:1,streakable:true},{giftName:'Donut',diamond:30,streakable:true},{giftName:'Galaxy',diamond:1000},{giftName:'Lion',diamond:29999},{giftName:'Perfume',diamond:20,streakable:true}];
 const FANS=['Test User','Test User 2','Test User 3','RobloxPro','TuTi'];
 $('btnTest').onclick=()=>{
-  if(botOn()) return ws.send(JSON.stringify({type:'cmd', cmd:'test'}));
+  if(botOn()) return ws.send(JSON.stringify({type:'cmd', key:KEY, cmd:'test'}));
   const t=TEST[Math.random()*TEST.length|0], n=FANS[Math.random()*FANS.length|0];
   const base={...t, uid:n, name:n, avatar:'', giftId:t.giftName, groupId:String(Date.now()), giftImg:''};
   if(t.streakable){ const max=1+(Math.random()*8|0); let i=1; const iv=setInterval(()=>{ onGift({...base,count:i,end:i===max}); if(++i>max) clearInterval(iv); },200); }

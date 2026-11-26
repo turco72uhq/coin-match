@@ -7,7 +7,10 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { TikTokLiveConnection, WebcastEvent, ControlEvent } from 'tiktok-live-connector';
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
+// En ligne : ADMIN_KEY = mot de passe pour les boutons, TIKTOK_USER = pseudo à suivre automatiquement
+const ADMIN_KEY = process.env.ADMIN_KEY || '';
+const AUTO_USER = process.env.TIKTOK_USER || '';
 const dir = path.dirname(fileURLToPath(import.meta.url));
 
 // ---------- petit serveur web pour la page ----------
@@ -104,6 +107,10 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ type: 'status', ...status }));
   ws.on('message', (raw) => {
     let m; try { m = JSON.parse(raw); } catch { return; }
+    if (ADMIN_KEY && m.key !== ADMIN_KEY) {
+      if (m.type !== 'ping') ws.send(JSON.stringify({ type: 'status', ...status, text: 'Mauvaise clé : ajoute ?cle=TA_CLE à l\'adresse' }));
+      return;
+    }
     if (m.type === 'connect') connectTo(m.username);
     if (m.type === 'disconnect') disconnect().then(() => setStatus(false, 'Déconnecté'));
     // Boutons de la page de contrôle -> envoyés à toutes les pages (dont l'overlay du live)
@@ -112,6 +119,12 @@ wss.on('connection', (ws) => {
     if (m.type === 'cmd' && m.cmd === 'test') fakeGift();
   });
 });
+
+// Connexion automatique au live (utile en ligne) : réessaie chaque minute si tu n'es pas en live
+if (AUTO_USER) {
+  const retry = () => { if (!live && !status.connected) connectTo(AUTO_USER); };
+  setTimeout(retry, 2000); setInterval(retry, 60000);
+}
 
 server.listen(PORT, () => {
   console.log('');

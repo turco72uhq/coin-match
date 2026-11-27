@@ -72,7 +72,7 @@ async function connectTo(name) {
   conn.on(WebcastEvent.ROOM_USER, (d) => send({ type: 'viewers', count: Number(d.viewerCount ?? d.total ?? 0) }));
   conn.on(WebcastEvent.MEMBER, (d) => send({ type: 'join', ...userInfo(d.user) }));
   conn.on(WebcastEvent.STREAM_END, () => setStatus(false, 'Le live est terminé'));
-  conn.on(ControlEvent.DISCONNECTED, () => { if (live === conn) setStatus(false, 'Déconnecté du live'); });
+  conn.on(ControlEvent.DISCONNECTED, () => { if (live === conn) { live = null; setStatus(false, 'Déconnecté du live, reconnexion…'); } });
 
   try {
     await conn.connect();
@@ -111,8 +111,8 @@ wss.on('connection', (ws) => {
       if (m.type !== 'ping') ws.send(JSON.stringify({ type: 'status', ...status, text: 'Mauvaise clé : ajoute ?cle=TA_CLE à l\'adresse' }));
       return;
     }
-    if (m.type === 'connect') connectTo(m.username);
-    if (m.type === 'disconnect') disconnect().then(() => setStatus(false, 'Déconnecté'));
+    if (m.type === 'connect') { paused = false; wanted = String(m.username || '').trim().replace(/^@/, ''); connectTo(m.username); }
+    if (m.type === 'disconnect') { paused = true; disconnect().then(() => setStatus(false, 'Déconnecté')); }
     // Boutons de la page de contrôle -> envoyés à toutes les pages (dont l'overlay du live)
     if (m.type === 'cmd' && ['start', 'stop', 'reset'].includes(m.cmd))
       send({ type: 'cmd', cmd: m.cmd, dur: Number(m.dur) || 120, snipe: Number(m.snipe) || 0 });
@@ -120,11 +120,16 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Connexion automatique au live (utile en ligne) : réessaie chaque minute si tu n'es pas en live
-if (AUTO_USER) {
-  const retry = () => { if (!live && !status.connected) connectTo(AUTO_USER); };
-  setTimeout(retry, 2000); setInterval(retry, 60000);
-}
+// Reconnexion automatique : au dernier pseudo utilisé (sinon TIKTOK_USER), toutes les 20 s si déconnecté
+let wanted = AUTO_USER;
+let busy = false;
+let paused = false; // vrai si tu as cliqué « Déconnecter »
+const retry = async () => {
+  const target = wanted || AUTO_USER;
+  if (paused || !target || busy || status.connected || (live && live.isConnecting)) return;
+  busy = true; try { await connectTo(target); } finally { busy = false; }
+};
+setTimeout(retry, 2000); setInterval(retry, 20000);
 
 server.listen(PORT, () => {
   console.log('');

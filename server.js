@@ -34,6 +34,9 @@ let pseudo = '';
 let status = { connected: false, text: 'Pas connecté' };
 const setStatus = (connected, text) => { status = { connected, text, pseudo }; send({ type: 'status', ...status }); console.log('[bot]', text); };
 
+// Prix de secours des cadeaux les plus courants (si TikTok n'envoie pas le prix)
+const KNOWN = { 5655: { name: 'Rose', diamond_count: 1 }, 5269: { name: 'TikTok', diamond_count: 1 } };
+
 const userInfo = (u = {}) => ({
   uid: u.uniqueId || u.displayId || u.userId || u.idStr || 'inconnu',
   name: u.nickname || u.uniqueId || u.displayId || 'Anonyme',
@@ -52,18 +55,21 @@ async function connectTo(name) {
   const conn = new TikTokLiveConnection(name, { enableExtendedGiftInfo: false });
   live = conn;
 
+  // Liste des cadeaux du live (nom, prix, image), chargée après la connexion
+  let catalog = new Map();
   conn.on(WebcastEvent.GIFT, (d) => {
     const g = d.giftDetails || {};
-    const ext = d.extendedGiftInfo || {};
+    const ext = d.extendedGiftInfo || catalog.get(Number(d.giftId)) || KNOWN[d.giftId] || {};
+    if (!g.diamondCount && !ext.diamond_count && !ext.diamondCount) console.log('[bot] cadeau sans prix, id', d.giftId);
     send({
       type: 'gift',
       ...userInfo(d.user),
       giftId: d.giftId,
       giftName: g.giftName || ext.name || 'Cadeau',
       giftImg: g.giftImage?.url?.[0] || g.giftImage?.urlList?.[0] || ext.image?.url_list?.[0] || '',
-      diamond: Number(g.diamondCount ?? ext.diamond_count ?? 0),
+      diamond: Number(g.diamondCount || ext.diamond_count || ext.diamondCount || 0),
       count: Math.max(1, Number(d.repeatCount || 1)),
-      streakable: (g.giftType ?? ext.type) === 1,
+      streakable: (g.giftType || ext.type || 1) === 1, // type inconnu = traité comme un combo (pas de double comptage)
       end: !!d.repeatEnd,
       groupId: String(d.groupId ?? '')
     });
@@ -77,6 +83,12 @@ async function connectTo(name) {
   try {
     await conn.connect();
     if (live === conn) setStatus(true, `Connecté au live de @${name}`);
+    try {
+      const list = await conn.fetchAvailableGifts();
+      const arr = Array.isArray(list) ? list : (list?.gifts || list?.data?.gifts || []);
+      catalog = new Map(arr.map(x => [Number(x.id), x]));
+      console.log('[bot] liste des cadeaux chargée :', catalog.size);
+    } catch (e) { console.log('[bot] liste des cadeaux indisponible :', String(e?.message || e).slice(0, 120)); }
   } catch (e) {
     const msg = String(e?.message || e);
     if (/offline|not.*live|UserOffline/i.test(msg) || e?.constructor?.name === 'UserOfflineError')
